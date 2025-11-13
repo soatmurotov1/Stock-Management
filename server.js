@@ -2,8 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import mongoose from "mongoose";
-// import router from "./src/router/index.js";
-// import { errorHandler } from "./src/middleware/errorHeander.js";
+import router from "./src/router/index.js"
+import { errorHandler } from "./src/middleware/errorHeader.js"
 
 dotenv.config()
 
@@ -18,9 +18,9 @@ mongoose.connect(mongodb)
 .then(() => console.log("mongodb connected"))
 .catch((error) => console.log(`mongodb connection error: ${error}`))
 
-// app.use("/", router)
+app.use("/", router)
 
-// app.use(errorHandler)
+app.use(errorHandler)
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
