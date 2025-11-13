@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon --watch . server.js",
     "start:dev": "node --watch server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "prepare": "husky"
   },
   "keywords": [],
@@ -24,10 +24,17 @@
     "mongoose": "^8.19.3",
     "nodemailer": "^7.0.10",
     "nodemon": "^3.1.11",
+    "uuid": "^13.0.0",
     "winston": "^3.18.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
     "husky": "^9.1.7"
+  },
+  "lint-staged": {
+    "*.js": "eslint --fix"
   }
 }
