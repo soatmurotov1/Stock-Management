@@ -1,18 +1,65 @@
 import { Router } from "express";
-import { create, getAll, getOne, update, deleted } from "../controller/order.controller.js";
-import { authGuard, roleGuard } from "../middleware/guard.middleware.js";
-import { createValidation, updateValidation } from "../validation/order.validation.js";
-import { validation } from "../middleware/validation.js";
+import db from "../db/knex.js";
 
+const router = Router();
 
-const orderRouter = Router()
+// CREATE order
+router.post("/", async (req, res) => {
+  try {
+    const { user_id, supplier_id, status, products, total_amount, currency } = req.body;
+    const [order] = await db("orders")
+      .insert({ user_id, supplier_id, status, products, total_amount, currency })
+      .returning("*");
+    res.status(201).json(order);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
+// GET all orders
+router.get("/", async (req, res) => {
+  try {
+    const orders = await db("orders").select("*");
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-orderRouter.post("/", authGuard, roleGuard("admin", "user"), validation(createValidation), create)
-orderRouter.get("/",authGuard, roleGuard("admin", "user"), getAll)
-orderRouter.get("/:id",authGuard, roleGuard("admin", "user"), getOne)
-orderRouter.put("/:id",authGuard, roleGuard("admin", "user"), validation(updateValidation), update)
-orderRouter.delete("/:id",authGuard, roleGuard("admin", "user"), deleted)
+// GET one order
+router.get("/:id", async (req, res) => {
+  try {
+    const order = await db("orders").where({ id: req.params.id }).first();
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+// UPDATE order
+router.put("/:id", async (req, res) => {
+  try {
+    const updated = await db("orders")
+      .where({ id: req.params.id })
+      .update(req.body)
+      .returning("*");
+    if (!updated.length) return res.status(404).json({ message: "Order not found" });
+    res.json(updated[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
-export default orderRouter
+// DELETE order
+router.delete("/:id", async (req, res) => {
+  try {
+    const deleted = await db("orders").where({ id: req.params.id }).del();
+    if (!deleted) return res.status(404).json({ message: "Order not found" });
+    res.json({ message: "Order deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;
