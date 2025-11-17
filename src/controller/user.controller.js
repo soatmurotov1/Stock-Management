@@ -1,265 +1,199 @@
+import db from "../db/knex.js";
+import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
-import { config } from "../config/index.js";
 import bcrypt from "bcrypt";
-import userModel from "../model/user.model.js";
-import { sendOTP, generateOTP } from "../helper/email.js"
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
+
+const createAccessToken = (user) =>
+  jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "15m" });
+
+const createRefreshToken = (user) =>
+  jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
 
 export const register = async (req, res, next) => {
   try {
-    const { username, email, password, role, status } = req.body
-    const existing = await userModel.findOne({ email })
+    const { email, username, password, role } = req.body;
 
+    const existing = await db("users").where({ email }).first();
     if (existing) {
-      if (existing.isVerified) {
-        return res.status(400).json({
-          message: "Bu email allaqachon ro'yxatdan o'tgan va tasdiqlangan.",
-        });
-      } else {
-        const newOtp = generateOTP().toString()
-        existing.otp = newOtp
-        existing.otpExpiresAt = Date.now() + 5 * 60 * 1000 // 5 min
-        await existing.save()
-        await sendOTP(email, existing.username, newOtp);
-
-        return res.status(200).json({
-          message:
-            "Siz avval ro'yxatdan o'tgansiz, lekin email tasdiqlanmagan. Yangi tasdiqlash kodi emailingizga yuborildi.",
-        })
-      }
+      return res.status(400).json({ message: "Email oldin ro'yxatdan o'tgan" });
     }
-    const otp = generateOTP().toString()
-    const user = await userModel.create({
-      username,
-      email,
-      password,
-      role,
-      status,
-      otp,
-      otpExpiresAt: Date.now() + 5 * 60 * 1000,
-      isVerified: false,
-    })
-    await sendOTP(email, username, otp);
-    res.status(201).json({
-      message: "Foydalanuvchi yaratildi. Tasdiqlash kodi emailingizga yuborildi.",
-      data: {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-      },
-    })
-  } catch (error) {
-    console.error("Register error:", error);
-    next(error)
-  }
-}
 
+    const hashed = await bcrypt.hash(password, 10);
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+    const [user] = await db("users")
+      .insert({
+        email,
+        username,
+        password: hashed,
+        role: role || "user",
+        otp,
+        otp_expires_at: otpExpires,
+        is_verified: false,
+      })
+      .returning("*"); 
+
+    await transporter.sendMail({
+      to: email,
+      subject: "Email tasdiqlash OTP",
+      html: `<h3>Sizning OTP kodingiz: <b>${otp}</b></h3>`,
+    });
+
+    res.status(201).json({ message: "Ro'yxatdan o'tildi. Emailga OTP yuborildi.", userId: user.id });
+  } catch (error) {
+    console.error("register xato:", error.message);
+    next(error);
+  }
+};
 
 export const verify = async (req, res, next) => {
   try {
-    const { email, code } = req.body
-    const user = await userModel.findOne({ email })
-    if (!user) {
-      return res.status(404).json({ message: `Bunday foydalanuvchi topilmadi.`})
-    }
-    if (user.isVerified) {
-      return res.status(400).json({ message: `Bu hisob allaqachon tasdiqlangan.` })
-    }
-    if (String(user.otp) !== String(code)) {
-      return res.status(400).json({ message: `Kiritilgan tasdiqlash kodi notogri. ` })
-    }
+    const { email, otp } = req.body;
 
-    if (user.otpExpiresAt < Date.now()) {
-      return res.status(400).json({ message: "Tasdiqlash kodi muddati tugagan. Iltimos, qayta ro'yxatdan o'ting." })
-    }
+    const user = await db("users").where({ email }).first();
+    if (!user) return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
 
-    user.isVerified = true
-    user.status = "active"
-    user.otp = null
-    user.otpExpiresAt = null
-    await user.save()
+    if (user.is_verified) return res.json({ message: "Email allaqachon tasdiqlangan" });
 
-    return res.status(200).json({
-      message: "Email muvaffaqiyatli tasdiqlandi.",
-      data: {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        status: user.status,
-      },
-    })
+    if (user.otp !== otp) return res.status(400).json({ message: "OTP noto'g'ri" });
+
+    if (new Date() > user.otp_expires_at) return res.status(400).json({ message: "OTP muddati tugagan" });
+
+    await db("users")
+      .where({ email })
+      .update({
+        is_verified: true,
+        otp: null,
+        otp_expires_at: null,
+        status: "active",
+      });
+
+    res.json({ message: "Email tasdiqlandi" });
   } catch (error) {
-    console.error("Verify error:", error)
-    next(error)
+    console.error("verify xato:", error.message);
+    next(error);
   }
-}
-
-const generateAccessToken = (payload) => jwt.sign(payload, config.jwt.accessSecret, { expiresIn: "1h" });
-const generateRefreshToken = (payload) => jwt.sign(payload, config.jwt.refreshSecret, { expiresIn: "7d" });
+};
 
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await userModel.findOne({ email });
-    if (!user) return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
-    if (!user.isVerified) return res.status(403).json({ message: "Hisob tasdiqlanmagan" });
+    const user = await db("users").where({ email }).first();
+    if (!user) return res.status(404).json({ message: "Email topilmadi" });
+    if (!user.is_verified) return res.status(400).json({ message: "Email tasdiqlanmagan" });
 
-    const isMatch = await user.comparePassword(password)
-    if (!isMatch) return res.status(400).json({ message: "Email yoki parol xato" });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ message: "Parol noto'g'ri" });
 
-    const accessToken = generateAccessToken({ id: user._id, username: user.username, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user._id });
+    const accessToken = createAccessToken(user);
+    const refreshToken = createRefreshToken(user);
 
-    user.accessToken = accessToken
-    user.refreshToken = refreshToken
-    await user.save()
-
-    res.status(200).json({
-      message: "Kirish muvaffaqiyatli",
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-      },
+    const { password: _, ...userData } = user;
+    res.json({
+      message: "Login muvaffaqiyatli",
+      user: userData,
       accessToken,
-      refreshToken
-    })
+      refreshToken,
+    });
   } catch (error) {
-    console.error("Login error:", error);
-    next(error)
+    console.error("login xato:", error.message);
+    next(error);
   }
-}
+};
 
-
-
-
-export const accessToken = async (req, res, next) => {
+export const refresh = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Token topilmadi." })
-    }
-    const token = authHeader.split(" ")[1]
-    const decoded = jwt.verify(token, config.jwt.accessSecret)
-    const user = await userModel.findById(decoded.id).select("-password -otp -otpExpiresAt")
-    if (!user) {
-      return res.status(404).json({ message: "Foydalanuvchi topilmadi." })
-    }
-    res.status(200).json({ message: "Token tasdiqlandi.", data: user })
-  } catch (error) {
-    console.log(error);
-    next(error)
-  }
-}
+    const { token } = req.body
+    if (!token) return res.status(400).json({ message: "Token yuborilmadi" });
 
+    jwt.verify(token, process.env.JWT_REFRESH_SECRET, (err, userData) => {
+      if (err) return res.status(403).json({ message: "Refresh token noto'g'ri" });
 
-export const refreshAccessToken = async (req, res, next) => {
-  try {
-    const { refreshToken } = req.body
-    if (!refreshToken)
-      return res.status(401).json({ message: "Refresh token topilmadi." })
-    const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret)
-    const user = await userModel.findById(decoded.id)
-    if (!user){
-        return res.status(404).json({ message: `user not found `})
-    }
-    const newAccessToken = jwt.sign(
-      { id: user._id, role: user.role },
-      config.jwt.accessSecret,
-      { expiresIn: "1h" }
-    )
-    res.status(200).json({
-      message: "Yangi access token yaratildi.",
-      accessToken: newAccessToken,
-    })
+      const newAccessToken = jwt.sign(
+        { id: userData.id },
+        process.env.JWT_SECRET,
+        { expiresIn: "15m" }
+      );
+
+      res.json({ accessToken: newAccessToken });
+    });
   } catch (error) {
-    console.log(error);
-    next(error)
+    console.error("refresh xato:", error.message);
+    next(error);
   }
-}
+};
 
 
 export const create = async (req, res, next) => {
   try {
-    const { password, ...restData } = req.body
-    if (!password) {
-      return res.status(400).json({ message: "Password required" })
-    }
-    const hashedPassword = await bcrypt.hash(password, 10)
-    const createUser = await userModel.create({ ...restData, password: hashedPassword })
-    const { password: pw, ...userWithoutPassword } = createUser.toObject()
-    res.status(201).json({ message: "Created user", data: userWithoutPassword })
+    const [user] = await db("users").insert(req.body).returning("*");
+    res.status(201).json(user);
   } catch (error) {
-    console.error(error)
-    next(error)
+    console.error("create xato:", error.message);
+    next(error);
   }
-}
+};
 
 export const getAll = async (req, res, next) => {
   try {
-    const users = await userModel.find().select("-password")
-    res.status(200).json({
-      message: "get all users",
-      count: users.length,
-      data: users,
-    })
+    const users = await db("users").select("*");
+    const safeUsers = users.map(({ password, ...user }) => user);
+    res.json({ count: safeUsers.length, users: safeUsers });
   } catch (error) {
-    console.log(error);
-    next(error)
+    console.error("getAll xato:", error.message);
+    next(error);
   }
-}
-
+};
 
 export const getOne = async (req, res, next) => {
   try {
-    const getOneUser = await userModel.findById(req.params.id).select("-password")
-    if (!getOneUser) {
-      return res.status(404).json({ message: `not found ID ${req.params.id} from user` });
-    }
-    res.status(200).json({ message: `found ID ${req.params.id} from user`, data: getOneUser })
+    const user = await db("users").where({ id: req.params.id }).first();
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const { password, ...rest } = user;
+    res.json(rest);
   } catch (error) {
-    console.log(error);
-    next(error)
+    console.error("getOne xato:", error.message);
+    next(error);
   }
-}
-
+};
 
 export const update = async (req, res, next) => {
   try {
-    const { id } = req.params
-    const { password, ...rest } = req.body
-    const user = await userModel.findById(id)
-    if (!user) {
-      return res.status(404).json({ message: "User not found" })
-    }
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10)
-      user.password = hashedPassword
-    }
-    Object.assign(user, rest)
-    await user.save()
-    const updatedUser = await userModel.findById(id).select("-password")
-    res.status(200).json({ message: "User updated", user: updatedUser })
+    const updated = await db("users").where({ id: req.params.id }).update(req.body).returning("*");
+    if (!updated.length) return res.status(404).json({ message: "User not found" });
+    const { password, ...rest } = updated[0];
+    res.json(rest);
   } catch (error) {
-    console.log(error);
-    next(error)
+    console.error("update xato:", error.message);
+    next(error);
   }
-}
-
+};
 
 export const deleted = async (req, res, next) => {
   try {
-    const deleteUser = await userModel.findByIdAndDelete(req.params.id)
-    if (!deleteUser) {
-      return res.status(404).json({ message: `not found ID ${req.params.id} from user` });
-    }
-    res.status(200).json({ message: `deleted user` })
+    const deleted = await db("users").where({ id: req.params.id }).del();
+    if (!deleted) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted successfully" });
   } catch (error) {
-    console.log(error);
-    next(error)
+    console.error("delete xato:", error.message);
+    next(error);
   }
 }
+
+
+
+
+
 
