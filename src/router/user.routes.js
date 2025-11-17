@@ -1,65 +1,26 @@
 import { Router } from "express";
-import db from "../db/knex.js";
+import { register, verify, login, refresh, create, getAll, getOne, update, deleted } from "../controller/user.controller.js";
+import { authGuard, roleGuard } from "../middleware/guard.middleware.js";
+import { validation } from "../middleware/validation.js";
+import { createValidation, updateValidation, registerValidation, loginValidation, } from "../validation/user.validation.js";
+import knex from "../db/knex.js";
+const userRouter = Router()
 
-const router = Router();
 
-// CREATE user
-router.post("/", async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
-    const [user] = await db("users")
-      .insert({ name, email, password, role })
-      .returning("*");
-    res.status(201).json(user);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+userRouter.post("/register",validation(registerValidation), register)
+userRouter.post("/verify", verify)
+userRouter.post("/login",validation(loginValidation), login)
+userRouter.post("/refresh", refresh)
 
-// GET all users
-router.get("/", async (req, res) => {
-  try {
-    const users = await db("users").select("*");
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-// GET one user
-router.get("/:id", async (req, res) => {
-  try {
-    const user = await db("users").where({ id: req.params.id }).first();
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+userRouter.post("/",authGuard(knex), roleGuard("admin"),validation(createValidation), create)
+userRouter.get("/",authGuard(knex), roleGuard("admin", "user"), getAll)
+userRouter.get("/:id",authGuard(knex), roleGuard("admin", "user"), getOne)
+userRouter.put("/:id",authGuard(knex), roleGuard("admin"),validation(updateValidation), update)
+userRouter.delete("/:id",authGuard(knex), roleGuard("admin"), deleted)
 
-// UPDATE user
-router.put("/:id", async (req, res) => {
-  try {
-    const updated = await db("users")
-      .where({ id: req.params.id })
-      .update(req.body)
-      .returning("*");
-    if (!updated.length) return res.status(404).json({ message: "User not found" });
-    res.json(updated[0]);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
 
-// DELETE user
-router.delete("/:id", async (req, res) => {
-  try {
-    const deleted = await db("users").where({ id: req.params.id }).del();
-    if (!deleted) return res.status(404).json({ message: "User not found" });
-    res.json({ message: "User deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-export default router;
+export default userRouter
+
+

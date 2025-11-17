@@ -51,11 +51,7 @@ export const createValidation = Joi.object({
   role: Joi.string().valid("user", "admin", "warehouse_manager").required().messages({
     "any.only": "Role faqat 'user', 'admin' yoki 'warehouse_manager' bo‘lishi mumkin",
     "any.required": "Role kiritilishi shart",
-  }),
-  status: Joi.string().valid("active", "inactive").required().messages({
-    "any.only": "Status faqat 'active' yoki 'inactive' bo‘lishi mumkin",
-    "any.required": "Status kiritilishi shart",
-  }),
+  })
 })
 
 

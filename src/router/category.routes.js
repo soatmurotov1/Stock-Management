@@ -1,65 +1,20 @@
 import { Router } from "express";
-import db from "../db/knex.js";
+import { create, getAll, getOne, update, deleted } from "../controller/category.controller.js"
+import { authGuard, roleGuard } from "../middleware/guard.middleware.js";
+import { validation } from "../middleware/validation.js";
+import { createValidation, updateValidation } from "../validation/category.validation.js";
+import knex from "../db/knex.js";
 
-const router = Router();
+const categoryRouter = Router()
 
-// CREATE
-router.post("/", async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    const [category] = await db("categories")
-      .insert({ name, description })
-      .returning("*");
-    res.status(201).json(category);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+categoryRouter.post("/",authGuard(knex), roleGuard("admin"),validation(createValidation), create)
+categoryRouter.get("/",authGuard(knex), roleGuard("admin", "user"),  getAll)
+categoryRouter.get("/:id",authGuard(knex), roleGuard("admin", "user"), getOne)
+categoryRouter.put("/:id",authGuard(knex), roleGuard("admin"),validation(updateValidation), update)
+categoryRouter.delete("/:id",authGuard(knex), roleGuard("admin"), deleted)
 
-// GET all
-router.get("/", async (req, res) => {
-  try {
-    const categories = await db("categories").select("*");
-    res.json(categories);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-// GET one
-router.get("/:id", async (req, res) => {
-  try {
-    const category = await db("categories").where({ id: req.params.id }).first();
-    if (!category) return res.status(404).json({ message: "Category not found" });
-    res.json(category);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+export default categoryRouter
 
-// UPDATE
-router.put("/:id", async (req, res) => {
-  try {
-    const updated = await db("categories")
-      .where({ id: req.params.id })
-      .update(req.body)
-      .returning("*");
-    if (!updated.length) return res.status(404).json({ message: "Category not found" });
-    res.json(updated[0]);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
 
-// DELETE
-router.delete("/:id", async (req, res) => {
-  try {
-    const deleted = await db("categories").where({ id: req.params.id }).del();
-    if (!deleted) return res.status(404).json({ message: "Category not found" });
-    res.json({ message: "Category deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-export default router;

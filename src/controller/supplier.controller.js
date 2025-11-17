@@ -1,19 +1,16 @@
-import SupplierModel from "../model/supplier.model.js";
+import { Router } from "express";
+import db from "../db/knex.js"
+
+const supplierRouter = Router()
+
 
 export const create = async (req, res, next) => {
   try {
-    const data = req.validatedData
-    const existing = await SupplierModel.findOne({ contactEmail: data.contactEmail })
-    if (existing) {
-      return res.status(400).json({ message: "Bu email bilan supplier allaqachon mavjud" })
-    }
-    const supplier = await SupplierModel.create(data)
-    res.status(201).json({
-      message: `supplier created`,
-      data: supplier,
-    })
+    const { name, contact_email, phone_number, address } = req.body
+    const [supplier] = await db("suppliers").insert({ name, contact_email, phone_number, address }).returning("*")
+    res.status(201).json({conunt: supplier.length, supplier: supplier})
   } catch (error) {
-    console.log(error);
+    console.error(error)
     next(error)
   }
 }
@@ -21,43 +18,34 @@ export const create = async (req, res, next) => {
 
 export const getAll = async (req, res, next) => {
   try {
-    const suppliers = await SupplierModel.find()
-    res.status(200).json({
-      message: "get all supplier",
-      count: suppliers.length,
-      data: suppliers,
-    })
+    const suppliers = await db("suppliers").select("*")
+    res.json({count: suppliers.length, suppliers: suppliers })
   } catch (error) {
-    console.log(error);
+    console.error(error);
     next(error)
   }
 }
+
 
 export const getOne = async (req, res, next) => {
   try {
-    const supplier = await SupplierModel.findById(req.params.id);
-    if (!supplier) {
-      return res.status(404).json({ message: `Supplier not found ID ${req.params.id}` });
-    }
-    res.status(200).json({ message: "Supplier topildi", data: supplier });
+    const supplier = await db("suppliers").where({ id: req.params.id }).first()
+    if (!supplier) return res.status(404).json({ message: "Supplier not found" })
+    res.json(supplier)
   } catch (error) {
-    console.log(error);
+    console.error(error)
     next(error)
   }
 }
 
+
 export const update = async (req, res, next) => {
   try {
-    const data = req.validatedData
-    const supplier = await SupplierModel.findById(req.params.id)
-    if (!supplier) {
-      return res.status(404).json({ message: `Supplier not foound ID ${req.params.id}` })
-    }
-    Object.assign(supplier, data)
-    await supplier.save()
-    res.status(200).json({ message: `supplier updeted`, data: supplier })
+    const updated = await db("suppliers").where({ id: req.params.id }).update(req.body).returning("*")
+    if (!updated.length) return res.status(404).json({ message: "Supplier not found" })
+    res.json(updated[0])
   } catch (error) {
-    console.log(error)
+    console.error(error)
     next(error)
   }
 }
@@ -65,15 +53,15 @@ export const update = async (req, res, next) => {
 
 export const deleted = async (req, res, next) => {
   try {
-    const supplier = await SupplierModel.findByIdAndDelete(req.params.id)
-    if (!supplier) {
-      return res.status(404).json({ message: `Supplier topilmadi: ID ${req.params.id}` })
-    }
-    res.status(200).json({ message: `supplier deleted`})
+    const deleted = await db("suppliers").where({ id: req.params.id }).del()
+    if (!deleted) return res.status(404).json({ message: "Supplier not found" })
+    res.json({ message: "Supplier deleted successfully" })
   } catch (error) {
-    console.log(error);
+    console.error(error);
     next(error)
   }
 }
+
+
 
 
