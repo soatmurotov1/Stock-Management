@@ -7,7 +7,7 @@ export const createValidation = Joi.object({
     "string.empty": "name majburiy"
   }),
   description: Joi.string().optional(),
-  categoryId: Joi.string().required().messages({
+  category_id: Joi.string().required().messages({
     "string.base": "categoryId string bo'lishi kerak",
     "any.required": "categoryId majburiy",
     "string.empty": "categoryId majburiy"
