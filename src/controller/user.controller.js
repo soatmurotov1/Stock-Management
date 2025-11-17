@@ -25,13 +25,32 @@ export const register = async (req, res, next) => {
 
     const existing = await db("users").where({ email }).first();
     if (existing) {
-      return res.status(400).json({ message: "Email oldin ro'yxatdan o'tgan" });
+      if (existing.is_verified) {
+        return res.status(400).json({ message: "Email allaqachon ro'yxatdan o'tgan" });
+      } else {
+        const otp = generateOTP();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+        await db("users")
+          .where({ email })
+          .update({ otp, otp_expires_at: otpExpires });
+
+        await transporter.sendMail({
+          to: email,
+          subject: "Email tasdiqlash OTP",
+          html: `<h3>Sizning yangi OTP kodingiz: <b>${otp}</b></h3>`,
+        });
+
+        return res.status(200).json({ 
+          message: "Email allaqachon ro'yxatdan o'tgan, yangi OTP yuborildi.", 
+          userId: existing.id 
+        });
+      }
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
-
+    const otp = generateOTP()
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000)
     const [user] = await db("users")
       .insert({
         email,
@@ -53,9 +72,9 @@ export const register = async (req, res, next) => {
     res.status(201).json({ message: "Ro'yxatdan o'tildi. Emailga OTP yuborildi.", userId: user.id });
   } catch (error) {
     console.error("register xato:", error.message);
-    next(error);
+    next(error)
   }
-};
+}
 
 export const verify = async (req, res, next) => {
   try {

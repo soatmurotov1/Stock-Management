@@ -2,11 +2,11 @@ import Joi from "joi";
 
 
 export const createValidation = Joi.object({
-  userId: Joi.string().required().messages({
+  user_id: Joi.string().required().messages({
     "string.empty": "userId majburiy",
     "any.required": "userId majburiy"
   }),
-  supplierId: Joi.string().required().messages({
+  supplier_id: Joi.string().required().messages({
     "string.empty": "supplierId majburiy",
     "any.required": "supplierId majburiy"
   }),

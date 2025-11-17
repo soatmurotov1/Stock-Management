@@ -6,11 +6,11 @@ export const createValidation = Joi.object({
     "string.min": "Supplier nomi kamida 2 ta belgidan iborat bo'lishi kerak",
     "string.max": "Supplier nomi maksimal 50 ta belgidan iborat bo'lishi mumkin",
   }),
-  contactEmail: Joi.string().email({ tlds: { allow: false } }).required().messages({
+  contact_email: Joi.string().email({ tlds: { allow: false } }).required().messages({
     "string.empty": "Email kiritilishi shart",
     "string.email": "Noto'g'ri email manzili",
   }),
-  phoneNumber: Joi.string().min(5).max(20).required().messages({
+  phone_number: Joi.string().min(5).max(20).required().messages({
     "string.empty": "Telefon raqami kiritilishi shart",
     "string.min": "Telefon raqami kamida 5 ta belgidan iborat bo'lishi kerak",
     "string.max": "Telefon raqami maksimal 20 ta belgidan iborat bo'lishi mumkin",
@@ -27,10 +27,10 @@ export const updateValidation = Joi.object({
     "string.min": "Supplier nomi kamida 2 ta belgidan iborat bo'lishi kerak",
     "string.max": "Supplier nomi maksimal 50 ta belgidan iborat bo'lishi mumkin",
   }),
-  contactEmail: Joi.string().email({ tlds: { allow: false } }).optional().messages({
+  contact_email: Joi.string().email({ tlds: { allow: false } }).optional().messages({
     "string.email": "Noto'g'ri email manzili",
   }),
-  phoneNumber: Joi.string().min(5).max(20).optional().messages({
+  phone_number: Joi.string().min(5).max(20).optional().messages({
     "string.min": "Telefon raqami kamida 5 ta belgidan iborat bo'lishi kerak",
     "string.max": "Telefon raqami maksimal 20 ta belgidan iborat bo'lishi mumkin",
   }),
