@@ -3,12 +3,12 @@ import Joi from "joi";
 
 export const createValidation = Joi.object({
   user_id: Joi.string().required().messages({
-    "string.empty": "userId majburiy",
-    "any.required": "userId majburiy"
+    "string.empty": "user_id majburiy",
+    "any.required": "user_id majburiy"
   }),
   supplier_id: Joi.string().required().messages({
-    "string.empty": "supplierId majburiy",
-    "any.required": "supplierId majburiy"
+    "string.empty": "supplier_id majburiy",
+    "any.required": "supplier_id majburiy"
   }),
   status: Joi.string().valid("pending", "completed", "cancelled").required().messages({
     "any.only": "status noto'g'ri",

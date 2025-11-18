@@ -14,7 +14,7 @@ export const sendOTP = async (to, otp) => {
   });
 
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `Abrorbek Soatmurotov ${process.env.EMAIL_USER}`,
     to,
     subject: "Your Verification Code",
     html: `<h3>Sizning OTP kodingiz: <b>${otp}</b></h3>`,

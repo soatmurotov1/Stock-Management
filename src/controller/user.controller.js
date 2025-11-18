@@ -21,36 +21,61 @@ const createRefreshToken = (user) =>
 
 export const register = async (req, res, next) => {
   try {
-    const { email, username, password, role } = req.body;
-
+    const { email, username = "", password, role } = req.body
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email va parol talab etiladi." });
+    }
+    const OTP_TTL_MINUTES = 10
     const existing = await db("users").where({ email }).first();
+
     if (existing) {
       if (existing.is_verified) {
-        return res.status(400).json({ message: "Email allaqachon ro'yxatdan o'tgan" });
+        return res.status(400).json({ message: "Email allaqachon ro'yxatdan o'tgan." });
       } else {
         const otp = generateOTP();
-        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+        const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
         await db("users")
           .where({ email })
           .update({ otp, otp_expires_at: otpExpires });
 
+        const html = `
+          <div style="font-family: Arial, Helvetica, sans-serif; line-height:1.4;">
+            <h3>Hello, ${escapeHtml(username || existing.username || "User")}!!!</h3>
+            <p>Sizning OTP kodingiz:</p>
+            <div style="display:flex; justify-content:center; align-items:center; margin:20px 0;">
+              <div style="padding:20px 30px; border-radius:8px; border:1px solid #e0e0e0; font-size:32px; font-weight:700; letter-spacing:6px;">
+                ${otp}
+              </div>
+            </div>
+            <p>Va u <b>${OTP_TTL_MINUTES} daqiqa</b> davomida amal qiladi.</p>
+            <hr />
+          </div>
+        `;
+
+        const text = `Hello, ${username || existing.username || "User"}!!!
+Sizning OTP kodingiz: ${otp}
+Kod ${OTP_TTL_MINUTES} daqiqa davomida amal qiladi`;
+
         await transporter.sendMail({
+          from: `Abrorbek Soatmurotov ${process.env.EMAIL_USER}`,
           to: email,
           subject: "Email tasdiqlash OTP",
-          html: `<h3>Sizning yangi OTP kodingiz: <b>${otp}</b></h3>`,
+          html,
+          text,
         });
 
-        return res.status(200).json({ 
-          message: "Email allaqachon ro'yxatdan o'tgan, yangi OTP yuborildi.", 
-          userId: existing.id 
+        return res.status(200).json({
+          message: "Email allaqachon ro'yxatdan o'tgan, yangi OTP yuborildi.",
+          userId: existing.id,
         });
       }
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const otp = generateOTP()
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000)
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+
     const [user] = await db("users")
       .insert({
         email,
@@ -61,20 +86,53 @@ export const register = async (req, res, next) => {
         otp_expires_at: otpExpires,
         is_verified: false,
       })
-      .returning("*"); 
+      .returning("*");
+
+    const html = `
+      <div style="font-family: Arial, Helvetica, sans-serif; line-height:1.4;">
+        <h3>Hello, ${escapeHtml(username || user.username || "User")}!!!</h3>
+        <p>Sizning OTP kodingiz:</p>
+        <div style="display:flex; justify-content:center; align-items:center; margin:20px 0;">
+          <div style="padding:20px 30px; border-radius:8px; border:1px solid #e0e0e0; font-size:32px; font-weight:700; letter-spacing:6px;">
+            ${otp}
+          </div>
+        </div>
+        <p>Va u <b>${OTP_TTL_MINUTES} daqiqa</b> davomida amal qiladi.</p>
+      </div>
+    `;
+
+    const text = `Hello, ${username || user.username || "User"}!!!
+Sizning OTP kodingiz: ${otp}
+Kod ${OTP_TTL_MINUTES} daqiqa davomida amal qiladi.
+Agar siz bu so'rovni amalga oshirmagan bo'lsangiz, e'tiborsiz qoldiring.`;
 
     await transporter.sendMail({
+      from: `Abrorbek Soatmurotov ${process.env.EMAIL_USER}`,
       to: email,
       subject: "Email tasdiqlash OTP",
-      html: `<h3>Sizning OTP kodingiz: <b>${otp}</b></h3>`,
+      html,
+      text,
     });
 
-    res.status(201).json({ message: "Ro'yxatdan o'tildi. Emailga OTP yuborildi.", userId: user.id });
+    res.status(201).json({
+      message: "Ro'yxatdan o'tildi. Emailga OTP yuborildi.",
+      userId: user.id,
+    });
   } catch (error) {
     console.error("register xato:", error.message);
-    next(error)
+    next(error);
   }
 }
+function escapeHtml(unsafe) {
+  if (!unsafe || typeof unsafe !== "string") return "";
+  return unsafe
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 
 export const verify = async (req, res, next) => {
   try {

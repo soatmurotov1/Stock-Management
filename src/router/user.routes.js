@@ -15,9 +15,9 @@ userRouter.post("/refresh", refresh)
 
 userRouter.post("/",authGuard(knex), roleGuard("admin", "warehouse_manager"),validation(createValidation), create)
 userRouter.get("/",authGuard(knex), roleGuard("admin", "warehouse_manager", "user"), getAll)
-userRouter.get("/:id",authGuard(knex), roleGuard("admin", "user"), getOne)
-userRouter.put("/:id",authGuard(knex), roleGuard("admin"),validation(updateValidation), update)
-userRouter.delete("/:id",authGuard(knex), roleGuard("admin"), deleted)
+userRouter.get("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager", "user"), getOne)
+userRouter.put("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager"),validation(updateValidation), update)
+userRouter.delete("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager"), deleted)
 
 
 
