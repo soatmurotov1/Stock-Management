@@ -15,10 +15,10 @@ export const registerValidation = Joi.object({
   }),
   password: Joi.string().pattern(passwordRegex).required().messages({
     "string.empty": "Parol kiritilishi shart",
-    "string.pattern.base": "Parol kamida 6 ta belgidan iborat bo‘lishi, kamida 1 harf va 1 raqamni o‘z ichiga olishi kerak",
+    "string.pattern.base": "Parol kamida 6 ta bo'lishi, kamida 1 harf va 1 raqam bo'lishi kerak",
   }),
   role: Joi.string().valid("user", "admin", "warehouse_manager").messages({
-    "any.only": "Role faqat 'user', 'admin' yoki 'warehouse_manager' bo‘lishi mumkin",
+    "any.only": "Role faqat 'user', 'admin' yoki 'warehouse_manager' bo'lishi mumkin",
   }),
 })
 

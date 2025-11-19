@@ -1,7 +1,6 @@
 import db from "../db/knex.js"
 
 
-
 export const create = async (req, res, next) => {
   try {
     const { name, description } = req.body

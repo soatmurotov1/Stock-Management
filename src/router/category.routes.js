@@ -7,11 +7,11 @@ import knex from "../db/knex.js";
 
 const categoryRouter = Router()
 
-categoryRouter.post("/",authGuard(knex), roleGuard("admin"),validation(createValidation), create)
-categoryRouter.get("/",authGuard(knex), roleGuard("admin", "user"),  getAll)
-categoryRouter.get("/:id",authGuard(knex), roleGuard("admin", "user"), getOne)
-categoryRouter.put("/:id",authGuard(knex), roleGuard("admin"),validation(updateValidation), update)
-categoryRouter.delete("/:id",authGuard(knex), roleGuard("admin"), deleted)
+categoryRouter.post("/",authGuard(knex), roleGuard("admin", "warehouse_manager"), validation(createValidation), create)
+categoryRouter.get("/",authGuard(knex), roleGuard("admin", "warehouse_manager", "user"),  getAll)
+categoryRouter.get("/:id",authGuard(knex), roleGuard("admin","warehouse_manager", "user"), getOne)
+categoryRouter.put("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager"), validation(updateValidation), update)
+categoryRouter.delete("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager"), deleted)
 
 
 export default categoryRouter

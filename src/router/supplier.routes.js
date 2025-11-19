@@ -7,11 +7,11 @@ import knex from "../db/knex.js";
 const supplierRouter = Router()
 
 
-supplierRouter.post("/",authGuard(knex), roleGuard("admin"),validation(createValidation), create)
-supplierRouter.get("/",authGuard(knex), roleGuard("admin", "user"), getAll)
-supplierRouter.get("/:id",authGuard(knex), roleGuard("admin", "user"), getOne)
-supplierRouter.put("/:id",authGuard(knex), roleGuard("admin"), validation(updateValidation), update)
-supplierRouter.delete("/:id",authGuard(knex), roleGuard("admin"), deleted)
+supplierRouter.post("/",authGuard(knex), roleGuard("admin", "warehouse_manager"),validation(createValidation), create)
+supplierRouter.get("/",authGuard(knex), roleGuard("admin", "warehouse_manager", "user"), getAll)
+supplierRouter.get("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager", "user"), getOne)
+supplierRouter.put("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager"), validation(updateValidation), update)
+supplierRouter.delete("/:id",authGuard(knex), roleGuard("admin", "warehouse_manager"), deleted)
 
 
 export default supplierRouter
