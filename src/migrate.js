@@ -1,5 +1,5 @@
 import knex from "./db/knex.js";
-import { up as createCategories } from "./db/migrations/20251116134417_create_users_table.js"
+import { up as createCategories } from "./db/migrations/20251120064007_create_inventory_table.js"
 
 async function runMigrations() {
   try {

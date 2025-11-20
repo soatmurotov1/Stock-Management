@@ -15,16 +15,34 @@ export const create = async (req, res, next) => {
   }
 }
 
-
 export const getAll = async (req, res, next) => {
   try {
-    const suppliers = await db("suppliers").select("*")
-    res.json({count: suppliers.length, suppliers: suppliers })
-  } catch (error) {
-    console.error(error);
-    next(error)
+    let { page = 1, limit = 10, search = "" } = req.query
+    page = Number(page)
+    limit = Number(limit)
+    const offset = (page - 1) * limit
+    const query = db("suppliers").select("*")
+    if (search) {
+      query.where(function () { this.where("name", "ilike", `%${search}%`).orWhere("contact_email", "ilike", `%${search}%`)})
+    }
+    const suppliers = await query.limit(limit).offset(offset)
+    const [{ count }] = await db("suppliers").modify(qb => {
+      if (search) { 
+        qb.where("name", "ilike", `%${search}%`).orWhere("contact_email", "ilike", `%${search}%`)
+      }}).count()
+      res.json({
+        success: true,
+        page,
+        limit,
+        total: Number(count),
+        totalPages: Math.ceil(count / limit),
+        suppliers
+      })
+    } catch (error) {
+      console.error(error)
+      next(error)
+    }
   }
-}
 
 
 export const getOne = async (req, res, next) => {

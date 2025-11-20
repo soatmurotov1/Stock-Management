@@ -12,7 +12,8 @@ export async function up(knex) {
     table.jsonb('products')
     table.decimal('total_amount').notNullable()
     table.string('currency').notNullable()
-    table.timestamps(true, true)
+    table.timestamp("createdAt").defaultTo(knex.fn.now())
+    table.timestamp("updatedAt").defaultTo(knex.fn.now())
   })
 }
 

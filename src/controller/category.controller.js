@@ -12,27 +12,46 @@ export const create = async (req, res, next) => {
   }
 }
 
-
 export const getAll = async (req, res, next) => {
   try {
-    const categories = await db("categories").select("*")
-    res.json({count: categories.length,  categories: categories})
-  } catch (error) {
-    console.log(error);
-    next(error)
+    let { page = 1, limit = 10, search = "" } = req.query
+    page = Number(page)
+    limit = Number(limit)
+    const offset = (page - 1) * limit
+    const query = db("categories").select("*")
+    if (search) {
+      query.where("name", "ilike", `%${search}%`)
     }
-}
+    const categories = await query.limit(limit).offset(offset)
+    const [{ count }] = await db("categories").modify((qb) => {
+      if (search) { 
+        qb.where("name", "ilike", `%${search}%`)
+      }}).count()
+      res.json({
+        success: true,
+        page,
+        limit,
+        total: Number(count),
+        totalPages: Math.ceil(count / limit),
+        categories
+      })
+    } catch (error) {
+      console.log(error);
+      next(error)
+    }
+  }
+
 
 export const getOne = async (req, res, next) => {
   try {
     const category = await db("categories").where({ id: req.params.id }).first()
     if (!category) return res.status(404).json({ message: "Category not found" })
-    res.json(category)
-  } catch (error) {
-    console.log(error)
-    next(error)
+      res.json(category)
+    } catch (error) {
+      console.log(error)
+      next(error)
+    }
   }
-}
 
 
 export const update =  async (req, res, next) => {

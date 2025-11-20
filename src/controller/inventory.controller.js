@@ -22,8 +22,27 @@ export const create = async (req, res, next) => {
 
 export const getAll = async (req, res, next) => {
   try {
-    const inven = await db("inventory").select("*")
-    res.json({ count: inven.length, inven })
+    let { page = 1, limit = 10, search = "" } = req.query
+    page = Number(page)
+    limit = Number(limit)
+    const offset = (page - 1) * limit
+    const query = db("inventory").select("*")
+    if (search) {
+      query.where(function () {this.where("name", "ilike", `%${search}%`).orWhere("sku", "ilike", `%${search}%`);})
+    }
+    const inven = await query.limit(limit).offset(offset);
+    const [{ count }] = await db("inventory").modify((qb) => {
+        if (search) {
+          qb.where(function () {this.where("name", "ilike", `%${search}%`).orWhere("sku", "ilike", `%${search}%`)})
+        }}).count()
+    res.json({
+      success: true,
+      page,
+      limit,
+      total: Number(count),
+      totalPages: Math.ceil(count / limit),
+      inven
+    })
   } catch (error) {
     console.error(error);
     next(error)
