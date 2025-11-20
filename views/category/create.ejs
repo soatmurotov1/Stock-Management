@@ -1,0 +1,8 @@
+<%- include("../layout/layout", { body: `
+<h2>Create Category</h2>
+
+<form method="POST" action="/category/create">
+    <input type="text" name="name" placeholder="Category name" required>
+    <button type="submit">Save</button>
+</form>
+` }) %>

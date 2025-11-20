@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import { config } from "../config/index.js";
 
 
 export const authGuard = (knex) => async (req, res, next) => {
@@ -13,7 +12,7 @@ export const authGuard = (knex) => async (req, res, next) => {
 
     let verified;
     try {
-      verified = jwt.verify(token, process.env.JWT_SECRET || config.jwt.accessSecret)
+      verified = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
     } catch (err) {
       console.error("authGuard verify xato:", err.message)
       return res.status(403).json({ message: "Token noto'g'ri yoki muddati tugagan" })
@@ -45,7 +44,6 @@ export const roleGuard = (...allowedRoles) => {
         message: "Sizning ushbu yo'nalishga kirishga ruxsatingiz yo'q",
       })
     }
-
     next()
-  };
-};
+  }
+}

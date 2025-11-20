@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { register, verify, login, refresh, create, getAll, getOne, update, deleted } from "../controller/user.controller.js";
+import { register, verify, login, refresh, create, getAll, getOne, update, deleted, resetPassword } from "../controller/user.controller.js";
 import { authGuard, roleGuard } from "../middleware/guard.middleware.js";
 import { validation } from "../middleware/validation.js";
 import { createValidation, updateValidation, registerValidation, loginValidation, } from "../validation/user.validation.js";
@@ -11,6 +11,7 @@ userRouter.post("/register",validation(registerValidation), register)
 userRouter.post("/verify", verify)
 userRouter.post("/login",validation(loginValidation), login)
 userRouter.post("/refresh", refresh)
+userRouter.post("/resetPassword", resetPassword)
 
 
 userRouter.post("/",authGuard(knex), roleGuard("admin", "warehouse_manager"),validation(createValidation), create)

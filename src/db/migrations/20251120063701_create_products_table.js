@@ -11,7 +11,8 @@ export async function up(knex) {
     table.string('currency').notNullable()
     table.string('sku').unique().notNullable()
     table.integer('quantity').notNullable().defaultTo(0)
-    table.timestamps(true, true)
+    table.timestamp("createdAt").defaultTo(knex.fn.now())
+    table.timestamp("updatedAt").defaultTo(knex.fn.now())
   })
 }
 

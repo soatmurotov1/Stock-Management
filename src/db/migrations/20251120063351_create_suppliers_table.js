@@ -7,7 +7,8 @@ export async function up(knex) {
     table.string('contact_email').unique().notNullable()
     table.string('phone_number').notNullable()
     table.string('address').notNullable()
-    table.timestamps(true, true)
+    table.timestamp("createdAt").defaultTo(knex.fn.now())
+    table.timestamp("updatedAt").defaultTo(knex.fn.now())
   })
 }
 
