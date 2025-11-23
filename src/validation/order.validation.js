@@ -12,8 +12,9 @@ export const createValidation = Joi.object({
   }),
   status: Joi.string().valid("pending", "completed", "cancelled").required().messages({
     "any.only": "status noto'g'ri",
-    "string.empty": "status majburiy",
-    "any.required": "status majburiy"
+    "string.empty": "status bo'sh bulishi mumkin emas",
+    "any.required": "status majburiy",
+    "any.only": "Status faqat 'padding','completed','cancelled' bulishi kerak"
   }),
   currency: Joi.string().valid("USD", "EUR", "UZS").required().messages({
     "any.only": "Valyuta faqat USD, EUR, UZS bo'lishi mumkin",
